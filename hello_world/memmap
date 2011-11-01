@@ -1,0 +1,15 @@
+
+/* memmap */
+MEMORY
+{
+    rom  : ORIGIN = 0x08000000, LENGTH = 32K
+   iwram : ORIGIN = 0x03000000, LENGTH = 32K
+   ewram : ORIGIN = 0x02000000, LENGTH = 256K
+}
+
+SECTIONS
+{
+   .text : { *(.text*) } > ewram
+ /*  .data : { *(.data*) } > ewram */
+   .bss  : { *(.bss*) } > ewram
+}
