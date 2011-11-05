@@ -206,12 +206,14 @@ memmap is the gnu linker script to put this all in ram
 copyjump.c is used to create the rom based copy and jump wrapper
 rommap is the gnu linker script to put this in rom
 
-
-If you have a way to run a multiboot program hello_world.bin is the
+If you have a way to run a multiboot program hello_world.mb is the
 binary image that runs from ram at address 0x02000000.
 
 If you have a way to run from rom like visual boy advance or a cartridge
 or whatever hello_world.gba is the file you want.
+
+visual boy advance can/will run multiboot files directly so you do not
+have to do the copyjump thing you can use hello_world.mb.
 
 
 
