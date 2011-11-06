@@ -2,18 +2,6 @@
 
 YAGBAT - Yet Another GBA Tutorial
 
-Commercial GBA games basically run from a rom in the cartridge.  A
-percentage of the games can be run using the link cable which downloads
-enough of the game from the master into the ram of a slave and runs
-from there.  Over the years there have been many similar and different
-cartridge solutions for homebrew GBA development, and this tutorial will
-definitely get to that topic.  For now though better to focus on running
-from ram.
-
-Actually, first focus on running in a simulator.  Visualboyadvance for
-example is a pretty good GBA simulator that will work fine to get us
-started.  After some basics, then move into multiboot cables and
-flash/rom based solutions, etc.
 
 Start with the hello_world example.
 
