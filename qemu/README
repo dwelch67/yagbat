@@ -1,0 +1,17 @@
+
+This has nothing to do with the gba, just fiddling around with QEMU
+
+run with
+
+qemu-system-arm -M versatilepb -m 128M -nographic -kernel hello_world.bin
+
+but I dont know how to get out of the console
+
+if you do this:
+
+qemu-system-arm -M versatilepb -m 128M -kernel hello_world.bin
+
+and then ctrl-alt-3  (not F3 but 3) will switch to the serial console
+and you can see the output, and can close out of qemu.
+
+
