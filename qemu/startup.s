@@ -4,7 +4,15 @@
 
 .globl _start
 _start:
-    b start_vector
+    ldr pc,start_vector_add
+    ldr pc,undef_vector_add
+    ldr pc,swi_vector_add
+
+
+start_vector_add: .word start_vector
+undef_vector_add: .word undef_vector
+swi_vector_add: .word swi_vector
+
 
 start_vector:
     mov sp,#0x20000
@@ -12,6 +20,16 @@ start_vector:
 hang:
     b hang
 
+undef_vector:
+    b .
+
+swi_vector:
+    push {lr}
+    ldr r0,[lr,#-4]
+    mov r1,sp
+    bl swi_code
+    pop {lr}
+    movs pc,lr
 
 .globl PUT32
 PUT32:
@@ -44,3 +62,9 @@ GETSP:
     mov r0,sp
     bx lr
 
+.globl DOSWI
+DOSWI:
+    push {lr}
+    swi 0x123
+    pop {lr}
+    bx lr
