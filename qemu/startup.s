@@ -16,9 +16,34 @@ swi_vector_add: .word swi_vector
 
 start_vector:
     mov sp,#0x20000
+    ;@ call an arm function from arm
     bl notmain
+
+    ;@ call a thumb function frm arm
+    ldr r0,=0xAABBAABB
+    bl hexstring_trampoline
+
+
+    ;@ call a thumb function frm arm
+    ldr r0,=0x12341234
+    ldr r1,hexstring_addr
+    mov lr,pc
+    bx r1
+
+    ;@ call a thumb function frm arm
+    ldr r0,=0x12312344
+    bl hexstring_trampoline
+
+
 hang:
     b hang
+
+hexstring_trampoline:
+    ldr r1,hexstring_addr
+    bx r1
+
+
+hexstring_addr: .word hexstring
 
 undef_vector:
     b .
@@ -68,3 +93,23 @@ DOSWI:
     swi 0x123
     pop {lr}
     bx lr
+
+.thumb
+
+.thumb_func
+.globl TPUT32
+TPUT32:
+    str r1,[r0]
+    bx lr
+
+.thumb_func
+.globl XPUT32
+XPUT32:
+    push {lr}
+    ;@ call an arm function from thumb asm
+    ldr r2,=PUT32
+    mov lr,pc
+    bx r2
+    pop {r2}
+    bx r2
+

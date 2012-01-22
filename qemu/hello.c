@@ -1,34 +1,20 @@
 
+//-------------------------------------------------------------------------
+//-------------------------------------------------------------------------
 unsigned int GETPC ( void );
 void PUT32 ( unsigned int, unsigned int );
 unsigned int GET32 ( unsigned int );
 void DOSWI ( void );
-
-
+//-------------------------------------------------------------------------
+//-------------------------------------------------------------------------
+void tuart_putc ( unsigned int x );
+void hexstring ( unsigned int d );
 //-------------------------------------------------------------------------
 void uart_putc ( unsigned int x )
 {
     PUT32(0x101f1000,x);
 }
 //-------------------------------------------------------------------------
-void hexstring ( unsigned int d )
-{
-    unsigned int rb;
-    unsigned int rc;
-
-    rb=32;
-    while(1)
-    {
-        rb-=4;
-        rc=(d>>rb)&0xF;
-        if(rc>9) rc+=0x37; else rc+=0x30;
-        uart_putc(rc);
-        if(rb==0) break;
-    }
-    uart_putc(0x0D);
-    uart_putc(0x0A);
-}
-
 void swi_code ( unsigned int inst, unsigned int sp )
 {
     hexstring(inst);
@@ -37,8 +23,7 @@ void swi_code ( unsigned int inst, unsigned int sp )
     hexstring(GET32(sp+0x4));
     hexstring(GET32(sp+0x8));
 }
-
-
+//-------------------------------------------------------------------------
 int notmain ( void )
 {
     unsigned int ra;
@@ -59,3 +44,5 @@ int notmain ( void )
 
     return(0);
 }
+//-------------------------------------------------------------------------
+//-------------------------------------------------------------------------
