@@ -110,7 +110,7 @@ few other things.  You should be able to find these registers in one
 of the online websites dedicated to documenting the GBA, NDS, etc for
 example this one is up at the time of this writing:
 
-http://nocash.emubase.de/gbatek.htm
+http://problemkaputt.de/gbatek.htm
 
 The lower 3 bits d[2..0] are the video mode, we want to use mode zero so
 these bits would be zero.  Starting with bit 8 you can enable up to 5
