@@ -2,6 +2,334 @@
 
 YAGBAT - Yet Another GBA Tutorial
 
+(Nintendo Gameboy Advance - GBA)
+
+The hello_world README was meant to be the intro README file and I have
+decided not to change it.  Maybe go read it now and come back, or read
+it later.
+
+This tutorial if you want to call it that, more like a number of
+examples with sometimes long winded explanations.  These tutorials
+are about bare metal programming, more so than not just being without
+an operating system, but bare to the point that canned libraries
+that come with devkitadv are not used, nor is that toolchain
+although it should work as this code is ideally portable enough to
+any gcc arm cross compiler, will see.  If you want to just make some
+api calls, google devkitadv.
+
+If you dont already have a GBA then first and foremost you can use
+one of the simulators in particular visualboyadvance, or as of this
+writing used ones are going for $20-$35 on ebay.  Although you might
+be more happy with the SP version, the backlight makes a big difference
+dont forget to get a charger which you will probably need to leave
+plugged in the whole time as the battery is probably not that good.
+
+The original and the SP support a link cable that allows up to four
+GBAs to be connected together, which is interesting, but what is more
+interesting is that you can cut that cable to get access to the wires
+and connect them to a usb to serial interface allowing you to have a
+debug path to your development computer.  Why?  Because that is still
+the primary way bare metal programmers debug.  Second, you will find
+that if/when you find a cartridge you can use to develop games on you
+end up in this cycle of removing the cartridge and/or an sd card, plug
+it into an sd card reader, copy the next build of your program over,
+sync, remove, move the sd card over to the cartridge, put the cartridge
+in, power the gba, and try it.  Repeat literally hundreds of times.
+*Or* copy one bootloader program over to the cartridge, plug that in,
+plug in the serial cable, power on, download your next build, run it,
+power off, power on, download the next build, try it, repeat.  Far
+fewer if any times needed to remove the cartridge.  Here is the problem
+though, if you are uncomfortable, with stripping the wires, figuring
+out what wires are what, and soldering or somehow connecting them to a
+usb to serial board and not doing damage to the gba or the usb board
+or both.  Then maybe back to the cartridge dance, there are some other
+solutions that might help, google is your friend.
+
+The GBA micro has a port and adapter, but so far I have not figured
+out how to make a cable for it.  Doable no doubt but the cables are
+rare at best, the key is getting something to plug into the connector
+and with a $2 gba cable on ebay for the GBA or GBA SP, about the
+easiest way you are going to end up with a plug.  The Nintendo DS
+and DS lite (which is what you will end up finding and/or that is
+the device you still have in a box somewhere) accept GBA games on the
+port on the bottom.  And yes you can also do DS development if you want
+and the cartridges for the DS are cheaper, some of them and easier to
+find or at least many more choices, but I prefer to start on the GBA
+then move to the DS rather than jump right in.  Also no serial port
+on the DS, wireless yes, but not sure if and how to take advantage of
+that for development, again google is your friend if you want to try
+that path.  I do not think the DSi or newer supports the gba cartridge.
+You may know that the GBA actually contains the arm processor for the
+gba world and a z80 processor for the original gameboy and supported
+cartridges from that prior platform.  The DS to some extent did the same
+thing, but with two slots not one for both, and there are two processors
+but in DS mode you can use both if you need to.  The DS probably has
+the best screen of the choices so far.  Will mention this in a bit but
+catridges are a moving target as to where to get them what to get and
+how to avoid bad clones.  There exists cartridges for the DS as
+mentioned and cartridges for the gba slot in the DS that are flush
+with the unit, these do not fit in a real GBA though, but for example
+some of them have flash that you can program using a program that you
+have put on the sd card on the slot 1 or DS slot and run from the DS
+side of the unit.  Or the gba side cartridge can have ram or be just
+a ram cartridge that supports pretending like it is the flash for
+development and DS side programs can write to it, and kick the unit into
+a mode where you can boot as a GBA.  Same sd card dance with the
+slot 1 DS side as you would have for the gba side.  Now these ram
+cartridges and basically almost everything GBA specific is harder to
+come by.
+
+As of this writing there is a new EZ-FLASH IV Micro SD cartridge that is
+available.  The EZ-FLASH brand has been around certainly for the entire
+life of the GBA and since I didnt do anything on the original gameboy
+wouldnt know if it pre-dates the GBA.  Is it the same EZ-FLASH company
+that whole time?  I do not know.  It has been one of the better if not
+best cartridge brands for GBA development.  The early catridges were
+just a flash and you had this programming thing you plug the cartridge
+into and had a Windows program (think Windows 3.1 days maybe...maybe...
+windows 95) that programmed your next build into the flash then you
+moved the catridge over and tried again.  Wasnt until sd cards came
+out that even the notion of using that as a way to move the data over
+rather than a cartridge with its own programmer and software was needed.
+Some of the sd based catridges still required a windows program that
+you fed your program to and it would modify it in some way then you
+copied it onto the sd card and or let their tool do it.  Just more
+steps per build you had to do to try a program.
+
+Where do you get an EZ-FLASH IV or any one of the many slot 1 cartridges
+for the DS?  Again moving target, even as of this writing I just
+received an EZ-FLASH IV for the reboot of this project and the place I
+bought from no longer has them.  Technically these cartridges can be
+used to pirate games and no doubt most of the folks that buy them use
+them for that purpose.  And you can imagine Nintendo is not happy about
+that and Nintendo and Sony (PSP) and the other players have gone back
+and forth between getting these places shut down that sell the devices
+or at least pull those devices and go back to just selling skins or
+cases, etc.  There have been and are places in the US, but they dont
+usually last long.  The cartridges are made in asian countries and
+probably all have been subject to their own piracy, one someone designs
+one catridge and makes tons of them then someone pirates that design and
+makes clones which may or may not be compatible and that can cause
+problems getting them to work.  some of these cartridges you need to
+put files from the vendor on the sd card or use their software which
+with them coming and going can make your catridge obsolete unless you
+can find someone that made copies of the files.  Further development
+is often stopped for that software.  EZ-FLASH interestingly is still
+around possibly the last gba cartridge unless one of us makes our own
+(I may still do it, but there is also a multiboot thing to be talked
+about).  Including a still working website http://www.ezflash.cn/
+with firmware and all that.  As of this writing that website has
+links to dealers, but I already see one I know of that no longer
+sells cartridges.
+
+There is a site that talks about platforms and homebrew games and
+real games for those platforms and has developer areas.  gbatemp.net
+they have a sister site showtemp.net where you can select a flash
+catridge and find hopefully a list of sites that currently sell that
+product somewhere in the world.  Helps with the moving target problem
+but domestic or overseas not sure how to get a feel for a good site
+from a bad one, actually I have not been burned yet, but maybe that
+is just a matter of time.  Hmm there is a GBA Flashcarts link which
+looks like not many are there the EZ-FLASH IV is and the EZ 3-in-1
+Extension ds sized and the 3-in-1 fat version which is my personal
+favorite, but you have to have a way to program it which I use a DS
+and a DS catridge to write my bootloader to it (EZ-flash at one point
+released a developers kit in source form which you can use to learn
+to program (or just use the software) to program the cartridges from
+your program.  So my/your bootloader could be used to program the
+flash itself in case you want to overwrite the bootloader or you could
+design the bootloader to allow you to boot to another sector of flash
+where your program lives, etc...
+
+Note on the DS side of this world, the Acekard had open source development
+for the firmware that you needed on the sd card, making it attractive
+as the development and availability didnt have to end, some others
+either are also now supported or maybe they are just clones.  The R4
+had a rash of clones, so I dont know how to approach those (R4 Gold
+might be separate from the R4 whatever elase).  CycloDS is the cadilac
+of ds catridges, or at least was, but was pricy.  You used to find some
+perfectly good ones for $10 give or take, others for $20 and then some
+pricy ones.
+
+The GBA and DS/DS lite are not field upgradable, field meaning not at
+the factory anymore, at your house.  So there is no way for Nintendo
+to force you to update the firmware with firmware that defeats the
+hacks that make some of these cartridges work.  The GBA has a blob
+of data at the beginning of the flash that has to have a checksum/crc
+that passes.  Figured out a long time ago, need to test it still but
+the EZ-FLASH IV approach (there is firmware on it that boots first then
+that runs your program or maybe it doesnt, not sure, maybe it just
+copies it to ram and resets).  Same with the protection on the DS/DS
+lite.  But starting with the NDSi to the present in order to play
+newer games or if you werent paying attention, it would update over wifi
+to firmware that would hopefully for them defeat the cartridge.  So
+the cat and mouse game continues.  Remember, I assume most folks
+buy these cartridges to download pirated roms to and not actually
+use them for development.  The use case here is development not piracy.
+
+No, even if wealthy, you are not going to make a licensed Nintendo
+cartridge and get it sold on the market.  You might make an awesome
+game that the homebrew community loves to play, that could happen.  If
+this is your get rich quick scheme, move on to making phone apps, and
+you will find that basically you wont make it rich there either.  Just
+because one in a million does, doesnt mean that one is you.  I think
+you have better odds of winning the lottery than making it rich
+banging out a game on your own.  There is still value here, lots to
+learn and the GBA in particular is a great platform for beginners or
+experienced.  It is up there with the Raspberry Pi as a good first
+bare metal platform, but the Raspberry Pi doesnt have buttons and
+a screen nor is very portable as bought.  Neither is brickable AFAIK
+although you never know you may figure it out (certainly on one or
+the other you might find a way to let some smoke out of some chips
+in a manner that is fatal).  In both cases, you remove the cartridge
+or sd card with the code that doesnt work, and it is no longer bricked.
+Trust me this is a big deal for first timers and experienced.  I still
+brick a card or two a year due mostly to confidence based on so many
+years experience combined with relaxing just once when I should have
+been more paranoid.  And again the simulator (visualboyadvance) has been
+around forever and you cannot brick it either, and it is free, no
+searching for catridges, no sd card dance.
+
+Okay so a little more on the hardware side.  The hello_world example
+shows you some number of address spaces.  The GBA is based on the now
+famous ARM7TDMI, the core that made ARM a household name (okay maybe
+not but just about everything with a power switch on it or battery
+has at least one arm in it including the x86 based pc or laptop you
+are possibly using to read this, if not using a pc or laptop then it
+is most likely an arm based tablet or phone).  Wasnt the first ARM/Acorn
+core but the one that got them really going.  And it is the one in the
+original GBA.  It is a common mistake to confuse ARM7 and ARMv7.  The
+former is a family of cpu cores, the latter is a name for an
+architecture.  ARM does not make chips, they sell the source code to
+CPUs and some support logic so that folks that make chips dont have
+to create their own processors to drive whatever it is they are making
+(in the case of Nintendo with the GBA a chip that is at the core of
+the GBA, ARM for the cpu and a lot of other logic for graphics).  ARM7
+was a family of cpu cores that were based on the ARMv4 or ARMv4T
+architecture.  Maybe think of it this way, look up GMC Yukon at
+wikipedia.  You see the GMT400 and GMT800 and so on, that could be
+the architecture, the base under the pickups and suvs for that time
+period.  Silverado or Yukon or Tahoe being the product names.  ARMv4T
+(yes this info is relevant to programming an arm so bear with me) is
+an architecture in the ARM world, all the cores that use that
+architecture are similar not just in the instruction set but other
+nuances that you may or may not see like the internal design of the
+pipelines, etc.  ARMv5 and then v6 and v7 and v8 and so on.  Then
+there are specific cores that are associated with those architectures.
+Generally improving from a spec perspective from the prior architecture,
+but not necessarily sharing the same implementation, just another
+instruciton set compatible core with improvements (and often a few to
+many new instructions, rarely if ever removing existing instructions).
+
+So the ARM7TDMI is ARMv4T based IT IS NOT AN ARMv7.  The T at the
+end of ARMv4T was to distinguish a second instruction set from the
+32 bit ARM instruction set.  From v5 to the present this second
+instruciton set is implied so the dropped the T.  This is the thumb
+instruciton set and it is more important on the GBA than say some of the
+microcontrollers that were ARM7TMDI based.  Nintendo is well known
+for making underpowered platforms.  Why have a gigahertz processor
+when you can have a megahertz processor?  The GBA is very much starved
+of processing power.  In particular this many years later, we dont
+even talk MHz, and this had so few it may scare you off.  What they
+did do though is take advantage of this alternate 16 bit instruction
+set amusingly called thumb.  Originally and certainly the ARMv4T would
+be considered that original one, there was a one to one correlation
+between the thumb instrucitons and an arm instruction, in that
+direction, you couldng go from any arm instruciton to a thumb but all
+thumb mapped into arm to the point that the printed version of the
+arm docs showed the encoding of the 32 bit arm instruction at the
+bottom of the page for the thumb instruction.  This is no longer the
+case with the thumb2 extensions we see starting a little with ARMv6
+but mostly with ARMv7.  My guess, I dont work for ARM and have
+no visibility into the core, is that the logic converted the thumb
+instructions into those arm instructions and the core only ran ARM
+instructions.
+
+How this all relates to the GBA is no doubt as a cost saving measure
+and not what you generally see with an ARM implementation, is that
+there were a lot of 16 bit busses in the design, the ROM in particular.
+You will find if you do some benchmarking that thumb mode, which back
+in the day I would find it making programs that had about 10 or so
+percent more instructions since the 16 bit instructions obvioulsy
+are not as feature packed as the 32 bit.  But despite that instant
+requirement for more instructions, the programs could and would run
+faster in thumb mode, and sometimes dramatically faster.  And that
+has to do in part with the bus being 16 bits.  In arm mode you have
+to do two cycles per instruction to gather the two halves, where with
+thumb mode every cycle could be a instruction to execute.  They also
+have a prefetch in the rom logic that allows you to burst sequential
+addresses.  Most programs if you look are linear at the machine
+code level for periods of time before branches. not always or often
+long periods but just enough that if you always read say 16 words
+in a burst at one clock cycle per burst (16 clocks, 16 halfwords) vs
+a random access of say 4 clocks per halfword (16 clocks, 4 halfwords),
+certainly code could be written to make this slower, but often it helped
+to turn on the prefetch.
+
+The smallest amount of ram is 32 bit and zero wait state meaning it is
+running at the speed of the processor and if you ask for the data
+at any address in that ram the data is ready for the next clock cycle.
+The other rams are not zero wait state, and are not 32 bits wide.
+
+Where I am headed with this is that the primary use case is to have
+a program on a rom on the cartridge that contains the game.  That
+program has a penalty for being in rom in general and in this case
+with the clock penalties.  But they added another case, this multi
+player thing, and the feature that you only needed one cartridge, the
+other one or two or three players didnt need a cartridge at all the
+program was downloaded into their units over this cable.  This was
+called multiboot.  Now obviously with no catridge is no rom, so how
+does the program run?  Well in that case there has to be a version
+of the program that runs out of one of the rams.  We can take advantage
+of this in a few ways.  if you always and only develop games that run
+out of that ram, then that game could be used in this mode or could
+be downloaded into a unit if you had some hardware that pretends to
+be a multiboot master and downloads into your GBA.  Interestingly I
+would assume that Nintendo would be less likely to try to shut down
+a multiboot product than a flash cartridge.  Because the games are
+delivered as catridges, even if you had a multiplayer game catridge
+there is probably only a percentage if any at all that you could wiht
+hacking find the core game and it may not play in that form it may
+need rom stuff or another GBA that has access to the rom on the
+cartridge.  basically little or no piracy with a device that allows
+you to download programs using multiboot.  The fact that there was never
+a list of multiboot products as long as the list of cartridges indicates
+that folks are not buying them for development, that is other than you
+and me.  If I dont give up on the GBA (thought I had until recently)
+then I likely wont make a catridge but will likely make a multiboot
+cable or just take the sources for the ones online and just build one.
+So many of these examples if not all (some may target rom performance)
+will be written to run out of ram, and then a small program written for
+the rom will copy the real program to ram then jump to it.  So basically
+there will be a multiboot (.mb) version of the program and a rom (.gba)
+version of the program.  This will also initially save you a significant
+amount of grief.  One of the more difficult things to get right as
+a bare metal programmer at this level is dealing with the toolchain
+and rom vs ram.  Naturally your program is read only, you dont normally
+need to write instructions while running (no reason to bring up
+self modifying code or just in time compilation, you cant fit a useful
+sized just in time compiler on this anyway), but you do need to
+read/write variables in ram.  This is not part of the C standard so
+each toolchain has its own way to be told where to put stuff, and
+it always ends up being painful.  And/or it is a source for failure
+in development.  if the address for a variable is assigned in the
+rom address space, but you need to read and write it, you fail that
+variable is read-only.  instructions can be in ram if you dont
+trash them but read/write variables cannot be in rom not in any
+practical sense.  if we tell the toolchain that everything lives in
+one blob of address space it is very happy fitting it all in, and
+by limiting to one bank of ram for the real program, you wont step
+on your own toes.  Later it is a good thing to see this but not
+at first.  I argue that because of the traps in bare metal development
+and the lack of visibility in to what the program is doing makes
+for a lot of failure, if you are not able to overcome a failure even
+if turns out to be something trivial, or if the failures to success
+ratio is such that your happiness suffers, then you give up possibly
+never to try bare metal again anywhere.  What a sad thought but it
+happens often for whatever reason and I think that rom vs ram is one
+of the first things to overcome.
+
+...not done yet...the above is only a rough first draft...
 
 Start with the hello_world example.
 
