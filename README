@@ -1,7 +1,225 @@
 
-
 YAGBAT - Yet Another GBA Tutorial
 
 (Nintendo Gameboy Advance - GBA)
 
-Start with the hello_world example.
+This is a set of baremetal examples and tutorials related to development
+on the Nintendo Gameboy Advance (GBA).  The GBA is a very good starting
+point for baremetal embedded development as it has things like a
+display and a keypad (buttons) so its more than just blinking an led on
+a microcontroller board.
+
+
+First off you can start using an emulator a good one is
+visualboyadvance
+
+apt-get install visualboyadvance
+
+on ubuntu/mint
+
+then to run a program
+
+vga myprogram.gba
+
+For hardware I recommend getting a Nintendo DS Lite on ebay.
+
+As of this writing they are around $25 for a used one, you will want
+a charger too (ideally get one that comes with a charger).
+
+The GBA SP is not a bad choice, currently more expensive, it has an
+advantage we may talk about (the port on the top can be used for a
+serial port and maybe I can figure out a multiboot cable to not need
+a flash cart) it is backlit.
+
+The original which works just fine too is not backlit although there
+are some kits and some may come with a kit applied.
+
+And there is the micro which is backlit, at the tail end of these
+being on retail you could pick them up pretty cheap I have a few
+somewhere.  I stopped using them because I couldnt figure out the
+UART which I relied on for most of my GBA work on the original and SP.
+
+The 3DS and newer wont work for this repo.
+
+Flash cartridges or flash carts.
+
+This is a constantly moving target at the time of this writing you
+can get one on amazon.  Look for
+
+EZ Flash GBA
+EZ-Flash GBA
+EZ-Flash Omega GBA
+EZ Omega Micro SD Game Card for GBA
+
+Or outside amazon or on ebay or wherever.  Again a moving target as
+these can be used to illegally play games that have been ripped from
+cartridges.  We are using it for homebrew development not illegally
+playing games.  Nintendo most likely has an opinion about platform
+development as it is/was near impossible to legally produce a product
+(cartridge) for the platform.  A relatively short list of companies
+are allowed into the club.
+
+Careful where you buy these that you dont get ripped off.  As of this
+writing the GBA flash carts are easier to come by than the NDS flash
+carts (something I may cover later is NDS development).
+
+Early flash carts you had special programmer and special software
+you plug the cartridge in to this programmer, you ran the special
+windows program...Mainly with the NDS carts but also/perhaps with the
+GBA you would download a bunch of files to an sd card and plug that
+in plus your .gba files and that would be a menu system to go through
+the files and pick one.   This EZ-Flash omega one on Amazon you simply
+put the .gba files on an sd card and something in the cartridge lets
+you pick, so the firmware is built in.  That is kinda ideal.
+
+EZ-Flash is a brand/name that goes back to the beginning of GBA carts
+No doubth this is a rip off of that company/name.  This happens a lot
+in the flash cart business where one product is cloned and the clone
+may or may not be worse than the original tring to find out the
+original from clones or what works or not is part of the game.
+
+Ideally you want a GBA cartridge that has an sd card that you dont
+need special software on the sd card, nor special software on
+your computer to prepare the files.  Just want to put the .gba files
+on the sd card...ideally...  You might have to try a few times to find
+a cartridge that you can get working.  A lot of the basics we can cover
+with visualboyadvance while you work on finding a flash cart.
+
+Now like the gameboy before it the GBA has a multiplayer cable deal
+where you could have up to four GBAs playing the same game head to
+head with special cables you could buy.  Only one GBA had to have
+the cartridge, the others didnt.  How this worked is there is a
+multiboot mode.  I have dabbled in this, if I had a set of
+schematics or a way to take an off the shelf board and just use it
+this is the ideal way IMO to do development as you dont need to
+deal with the cartridge.  Now saying that you need to find a cable
+and then cut it up and build something which might involve soldering
+so its not for everyone.  I have a stockpile of cables but dont
+know how hard they are to find now.  This is a personal TODO to finish
+making my own multiboot solution for myself and/or to share.
+
+The platform was designed to have the program run in flash then
+there are multiple memories some for general purpose some are
+tables for video tiles and sprites.  The larger but not necessarily
+fastest memory is where the multiboot games would land, your GBA
+would be a slave the master would download the RAM version into your
+memory and it would run from there.
+
+Documentation
+
+http://www.devrs.com
+
+devrs, this site is a bit dated, but this was THE place to go early on.
+
+Is/was a good site
+
+there are others like gbadev and gbatemp.
+
+
+For the information we need you can google gbatek if the link below
+doesnt work
+
+http://problemkaputt.de/gbatek.htm
+
+There are many clones of gbatek at different version levels.
+
+
+Ill shoot you straight though, google:
+
+AGB Programming Manual
+
+There are many folks that have published the actual Nintendo
+documentation.  (yes AGB not GBA)  There are different versions of
+this the newer the better but even older ones will suffice.
+
+Between the Nintendo doc and gbatek you can get a lot of what you need
+the gbatek one covers the DS and newer so there is a mangling of
+information that can be confusing.
+
+For the ARM processor itself (ARM doesnt make chips they make
+processor IP that others buy and put in their own chips with their
+own stuff or other purchased IP they glue together) you will need
+two documents from infocenter.arm.com. (download the pdf version
+sometimes scroll to the bottom to see the pdf link. you might have
+to give up an email address to get some of these, no big deal)
+
+On the left, currently
+
+ARM architecture -> Reference Manuals -> ARMv5 Reference Manual
+and
+ARM7 processors -> ARM7TDMI -> Revision: r4p1 -> ARM7TDMI Technical Reference Manual
+
+
+These tutorials will attempt to cover the basics, get you over the
+major hurdles and traps that cause most folks to just give up, once
+past that point and have some success and confidence, then you can
+focus on the documentation and try various things you find there,
+building on the successful/working code base/skeleton you have
+developed thus far.
+
+These examples are in no way intended to be a library or be used to
+become a library or development kit, these are meant to show you that
+you can do it, no fear, and from that knowledge build your own.  Teach
+you to fish so you can build your own rod and hooks and catch fish
+yourself.  Not here to give you fish I caught.
+
+One of the nice features of baremetal is that you can do whatever you
+want, you are not limited by operating system rules or in some cases
+language rules, you can cheat if the compiler lets you, the only rules
+that matter are the hardware, all you have to do is conform
+to the hardware.  And as a result this gets very personal, just like
+how passinate we are about our go-to text editor your baremetal style
+may become very personal, I dont expect you to like mine, but I feel
+it is simple enough that every one can at least read and understand
+it, I use next to no gee whiz features of the language or tools, etc.
+Try my sandbox, succeed in seeing these work, and from that experience
+then build your own.
+
+I expect you to know C I will give you the assembly language you need
+to get from reset to C code.
+
+You will need a cross compiler if running on ubuntu or mint then it is
+really easy:
+
+sudo apt-get -y install gcc-arm-linux-gnueabi binutils-arm-linux-gnueabi
+
+or maybe
+
+sudo apt-get -y install gcc-5-arm-linux-gnueabi
+
+or maybe
+
+sudo apt-get -y install gcc-7-arm-linux-gnueabi
+
+My examples should work on gcc/binutils cross tools from around
+gcc 3.x.x or 4.x.x to the present (9.x.x as of this writing) and
+whatever the binutils were at those times.  I think I am currently
+mixing gcc 5.x.x with the current as of this writing binutils and
+that appears to work.  The code produced by the various major versions
+of gcc varies, and newer versions of gcc are not necessarily "better"
+they produce larger binaries from the same source code than the
+older versions.
+
+My code is written to not be affected by arm-linux-gnueabi vs
+arm-none-eabi.  So you can get pre-builts of either flavor and they
+will work here.
+
+I run linux so some of the subtle nuances of the makefile and commands
+may need to be tweaked for Windows or MAC.  both of those platforms
+have access to gnu based cross tools, and my code should need no
+changes to be built on those platforms, at best the makefiles.
+
+I have a build_gcc repo where I have a build_arm script that (on Linux)
+will build a cross compiler from sources.  This is what I actually
+use day to day.
+
+ARM maintains one, I prefer this link to that one as it has not changed
+
+https://launchpad.net/gcc-arm-embedded
+
+but it is dated they have a new link (which does keep changing), or you
+can google your way through to an arm gnu cross compiler.  If you
+have a raspberry pi you can natively build there (have to change the
+makefiles).
+
+start with the 000_mode0 example

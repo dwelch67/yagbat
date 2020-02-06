@@ -1,0 +1,241 @@
+
+This first example sets the framework for putting text on the screen.
+
+---------------------------------------------------------------------
+GameBoy Advance memory map,
+
+0x00000000:  BIOS
+0x02000000:  EWRAM
+0x03000000:  IWRAM
+0x04000000:  Memory Mapped Registers
+0x05000000:  Palette RAM (PRAM)
+0x06000000:  Video RAM (VRAM)
+0x08000000:  GAME ROM
+
+In the ARM world a word is 32 bits, a halfword 16 bits, a byte 8 bits
+
+EWRAM  256Kbytes, can be read or written as bytes, halfwords, and words (32bit)
+IWRAM  32Kbytes, can be read or written as bytes, halfwords, and words
+PRAM   512 halfwords, can be read or written as halfwords or words (NOT BYTES!)
+VRAM   98Kbytes, can be read or written as halfwords or words (NOT BYTES!)
+
+The first 256 halfwords of the PRAM are for tiles, the second 256 are for
+sprites.  Each color is 15 bits or a choice from 32768 colors.   The lower
+5 bits d[4..0] are Red, the next 5 bits d[9..5] are green and the next 5
+bits d[14..10] are blue the upper bit d[16] is a dont care:
+
+FEDC BA98 7654 3210
+xBBB BBGG GGGR RRRR
+
+You must understand that this memory as well as video memory (VRAM) is
+16 (or 32) bit,  you CANNOT access it as bytes, if you do basically you
+will set the byte you want but you will wipe out its partner.
+
+A note on video modes.  There are tile/sprite modes and then a generic
+framebuffer/pixel mode.  Once you really see what you can do with tiles
+and sprites it will make sense why most GBA games are Mario like, sliders
+with tiles, etc.  More importantly the tile/sprite stuff is done in
+hardware and spares the processor from a lot of the work.  The
+framebuffer/pixel mode is your generic thing where this halfword goes
+with the pixel at 0,0 then the next pixel is 0,1, etc, etc, across and
+down.
+
+For the purposes of getting started lets just start by using 8x8 tiles,
+we can map the ASCII character set with an 8x8 font and turn the thing
+into a text screen.
+
+First we need to setup the palette.  How about this color scheme:
+
+BGR
+000 [0x05000000] 0x0000
+001 [0x05000002] 0x001F
+010 [0x05000004] 0x03E0
+011 [0x05000006] 0x03FF
+100 [0x05000008] 0x7C00
+101 [0x0500000A] 0x7C1F
+110 [0x0500000C] 0x7FE0
+111 [0x0500000E] 0x7FFF
+
+If we use an 8x8 tileset then the memory that defines the tiles is broken
+into 64 byte blocks, starting with the top left pixel, each byte is the
+color from the palette for that pixel.  So the byte sequence for the
+letter B might be:
+
+0x07,0x07,0x07,0x07,0x07,0x07,0x00,0x00, //[######  ]
+0x00,0x07,0x07,0x00,0x00,0x07,0x07,0x00, //[ ##  ## ]
+0x00,0x07,0x07,0x00,0x00,0x07,0x07,0x00, //[ ##  ## ]
+0x00,0x07,0x07,0x07,0x07,0x07,0x00,0x00, //[ #####  ]
+0x00,0x07,0x07,0x00,0x00,0x07,0x07,0x00, //[ ##  ## ]
+0x00,0x07,0x07,0x00,0x00,0x07,0x07,0x00, //[ ##  ## ]
+0x07,0x07,0x07,0x07,0x07,0x07,0x00,0x00, //[######  ]
+0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, //[        ]
+
+Using the palette above, 0x07 would be white and 0x00 would be black. You
+can define as many as 1024 tiles depending on the mode and options.
+
+There are really lots of combinations of modes, for now lets use a mode
+that has a virtual 256x256 world.  But the LCD is only 240x160 so you
+can only see a 240x160 window into that 256x256 (normally you can scroll
+around using x and y offset registers, but we dont need that for this
+exercise).
+
+The video memory that we use to place tiles on the screen uses one
+halfword per tile, the lower 10 bits specify the tile to use (offset
+into tile memory).  Being a 256x256 virtual screen it takes 32x256
+halfwords.  If we are not going to use all of the 256x256 but 240x160
+then we would use the first 30 halfwords, skip 2, then the next 30 then
+skip 2, etc and only use the first 160 rows.  This is 32x160-2 halfwords
+or 5118 halfwords.
+
+The video memory and tile memory shares the same 98kbytes, you can to
+some extent control where the screen starts and where the tiles start.
+Again this thing can be configured in many ways, this memory can be used
+as multiple tile layers, you can page flip or whatever.  We dont need to
+do any of that yet.
+
+Its actually not that simple, the upper 32kbytes is reserved for sprite
+stuff, so we cant use that.  Look at it this way, there are 4 possible
+starting addresses for tile memory 0x6000000, 0x6004000, 0x6008000, and
+0x600C000.  The screen memory can start at any one of 32 offsets into
+video memory at 0x800 byte intervals, or 0x6000000, 0x6000800,
+0x6001800, etc.
+
+Lets put the tiles at 0x6000000 and put the screen at 0x6008000.
+
+We are getting really close now.
+
+There are a couple of video registers we need to look at.  The first is
+the overall display control register where we pick the video mode and a
+few other things.  You should be able to find these registers in one
+of the online websites dedicated to documenting the GBA, NDS, etc for
+example this one is up at the time of this writing:
+
+http://problemkaputt.de/gbatek.htm
+
+The lower 3 bits d[2..0] are the video mode, we want to use mode zero so
+these bits would be zero.  Starting with bit 8 you can enable up to 5
+layers that stack on each other the first four are called BG 0 thru BG 3
+the fifth is the sprite layer.  We want BG0 enabled so we set bit 8.  The
+rest of the bits we want to just leave zero.  This register is at address
+0x4000000.  And we have decided to use the value:
+FEDC BA98 7654 3210
+0000 0001 0000 0000 = 0x0100
+
+Each of the BG layers has its own register, the bit definitions are
+the same across each (in this mode).  So the control register for BG0,
+the layer we are going to use, is 0x4000008.  The lower two bits control
+priority, basically when you use multiple layers you set a different
+priority for each and it governs whos tiles are drawn on top of other
+layers tiles (visible and covered).  Since we are only using one layer
+we can just leave it at zero.  The next two bits d[3..2] control the
+base address for the tile data for this layer (yes each layer can use
+different tiles or share the same ones)  00b uses 0x6000000, 01b uses
+0x6004000, etc.  We want 0x6000000 so these bits are zero.  Bit 7 controls
+how the tiles are layed out in memory setting this bit to a 1 makes them
+work as I have described above (64 byte blocks cover 8x8 tiles).  bits
+d[12..8] control the base address in VRAM of where we want the screen
+memory to start for this BG layer.  If we want 0x6008000 and we know
+that there are 0x800 bytes per block we want to have a 0x10 for these
+bits.  The rest of the bits are just zero.
+FEDC BA98 7654 3210
+0001 0000 1000 0000 = 0x1080
+
+I think we have enough information to setup the video, as a reminder,
+once you setup the registers, palette, tiles, etc.  The screen is
+halfwords (unsigned shorts) starting at 0x6008000, each halfword is a
+tile on the screen.  So take whatever character (byte) you want on the
+screen and just stick that in the proper place in this memory, the upper
+bits want to be zero for now so its simple.
+
+This code is written to be somewhat compiler independent.  No system
+or C libraries (or ideally compiler libraries) are used.  See the top
+level README for toolchain information.  This Makefile uses the
+arm-none-eabi version, but this code is written so that it ideally
+works with the arm-linux-gnueabi as well as roll-your-own gcc compilers
+
+Proper GBA games are distributed on a rom on a cartridge and the system
+level design is such that you prefer to run the main program from the
+rom.  The rom bus has a prefetch queue and speed adjustments to make
+it much faster than the ram that is big enough for a practial program.
+
+In order to develop your own GBA games there are or at least have been
+many flash based cartridge solutions.  The problem is they are a moving
+target, the companies come and go and or the products come and go and
+a number of them require some sort of host software to run either a
+windows program and a special programmer to program the flash on the
+chip or in the case of sd card based ones a windows program to do some
+magic to the .gba file to make it work.  And these windows programs are
+not supported and sometimes flakey if you can still find them, and are
+not updated to keep up with newer versions of windows.
+
+These tutorials/examples will eventually, hopefully, get into a path
+to flash/cartridge based programs.  But the bulk of these examples will
+focus on running from ram.  The GBA system was designed such that a
+master with a cartridge can download a program into a slave GBA over a
+link cable so that the two units (or three or four) can play head to
+head.  Which means, *some*, commmercial GBA games run from the larger
+of the two rams.  This also means there is some sort of protocol over a
+wire that permits loading programs into GBA ram and starting it.  This
+is called multiboot and, hopefully, these examples will get into that
+as well.
+
+The short story is the examples are going to be designed to run from
+RAM.  There will be a rom based wrapper that will be used to copy the
+programs into ram and branch to ram (copy and jump) so that simulators
+like visualboyadvance can be used or if you happen to have a cartridge
+you can run these programs.  Note, microsd based NDS cartridges are
+much easier to come by and with the right gba ram cartridge to go along
+with it the software on the NDS cartridge can load the GBA game into
+ram and kick the NDS (lite) into GBA mode (not the NDSi nor the 3D only
+the lite or orignal NDS lite.
+
+
+Quick notes on my programming style.  I dont support .bss or .data
+generally, because this is ram based you can simply add a .data
+section to the linker script and it will magically work.  But if/when
+we cover running from rom it wont (there is a rom (flash) program
+here to do the copy and jump).  There were some toolchains in the
+past and possibly present and maybe future that when they saw main()
+defined they added stuff that we dont want.  The C entry point can
+be arbitrary, the spec/convention is main(), but I am intentionally
+not using that so notmain() is my C entry point.
+
+I use an abstraction layer for direct access to registers and data
+namely PUT32/GET32, PUT16/GET16, etc.  Lots of reasons why I do this
+others will use void pointers or the very bad, structs, or the ultimate
+evil unions with structs. YMMV.
+
+Try my sandbox as written then make your own, even if you dont like
+the style or solution it is functional and simple and readable.  Once
+you are able to make it your own then go right ahead.
+
+
+
+For the actual application in this directory
+
+startup.s  C bootstrap code, this is our entry point
+notmain.c  the C code
+memmap     the linker script for this program.
+
+For the copy and jump rom/wrapper program
+
+startup.s  C bootstrap code, this is our entry point
+copyjump.c the C code
+app.c      generated from bintoc this is the application above
+
+If you have a way to run a multiboot program notmain.mb is the
+binary image that runs from ram at address 0x02000000.
+
+If you have a way to run from rom like visual boy advance or a
+cartridge or whatever notmain.gba is the file you want.
+
+visual boy advance can/will run multiboot files directly so you do not
+have to do the copyjump thing you can use notmain.mb.
+
+TODO finish this readme.  Replace the copyjump with another that is
+not all assembly language.
+
+
+
+
+
