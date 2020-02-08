@@ -219,9 +219,10 @@ memmap     the linker script for this program.
 
 For the copy and jump rom/wrapper program
 
-startup.s  C bootstrap code, this is our entry point
+flash.s  C bootstrap code, this is our entry point
 copyjump.c the C code
-app.c      generated from bintoc this is the application above
+rom.h      generated from bintoc this is the application above
+rommap     the linker script for this program
 
 If you have a way to run a multiboot program notmain.mb is the
 binary image that runs from ram at address 0x02000000.
@@ -232,10 +233,10 @@ cartridge or whatever notmain.gba is the file you want.
 visual boy advance can/will run multiboot files directly so you do not
 have to do the copyjump thing you can use notmain.mb.
 
-TODO finish this readme.  Replace the copyjump with another that is
-not all assembly language.
+vba notmain.mb
 
+or the full image
 
+vba notmain.gba
 
-
-
+The file notmain.gba is what you use with the flash cartridge.

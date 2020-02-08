@@ -12,15 +12,20 @@ startup.o : startup.s
 notmain.o : notmain.c
 	$(CROSS_COMPILE)-gcc -c $(COPS) notmain.c -o notmain.o
 
-notmain.gba : notmain.mb copyjump rommap
-	./copyjump notmain.mb
-	$(CROSS_COMPILE)-as $(AOPS) notmain.mb.s -o notmain.mb.o
-	$(CROSS_COMPILE)-ld -T rommap notmain.mb.o -o notmain.mb.elf
-	$(CROSS_COMPILE)-objdump -D notmain.mb.elf > notmain.mb.list
-	$(CROSS_COMPILE)-objcopy notmain.mb.elf -O binary notmain.gba
+rom.h : bintoc.c notmain.mb
+	gcc bintoc.c -o bintoc
+	./bintoc notmain.mb rom.h
 
-copyjump : copyjump.c
-	gcc copyjump.c -o copyjump
+flash.o : flash.s
+	$(CROSS_COMPILE)-as $(AOPS) flash.s -o flash.o
+
+copyjump.o : copyjump.c rom.h
+	$(CROSS_COMPILE)-gcc -c $(COPS) copyjump.c -o copyjump.o
+
+notmain.gba :              rommap flash.o copyjump.o 
+	$(CROSS_COMPILE)-ld -T rommap flash.o copyjump.o -o copyjump.elf
+	$(CROSS_COMPILE)-objdump -D copyjump.elf > copyjump.list
+	$(CROSS_COMPILE)-objcopy copyjump.elf -O binary notmain.gba
 
 notmain.mb :               memmap startup.o notmain.o
 	$(CROSS_COMPILE)-ld -T memmap startup.o notmain.o -o notmain.elf
@@ -33,8 +38,7 @@ clean :
 	rm -f *.bin
 	rm -f *.list
 	rm -f *.gba
-	rm -f *.bin.s
 	rm -f *.mb
-	rm -f *.mb.s
-	rm -f copyjump
+	rm -f rom.h
+	rm -f bintoc
 
