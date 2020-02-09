@@ -1,0 +1,6 @@
+
+This is derived from 001_mode0.
+
+It only uses the 0-9 and A-F characters so that it can print hex numbers
+this is my typical printf for debugging to just print 32 bit numbers
+in hex.
