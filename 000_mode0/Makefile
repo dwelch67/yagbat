@@ -26,11 +26,13 @@ notmain.gba :              rommap flash.o copyjump.o
 	$(CROSS_COMPILE)-ld -T rommap flash.o copyjump.o -o copyjump.elf
 	$(CROSS_COMPILE)-objdump -D copyjump.elf > copyjump.list
 	$(CROSS_COMPILE)-objcopy copyjump.elf -O binary notmain.gba
+	cp notmain.gba 000_mode0.gba
 
 notmain.mb :               memmap startup.o notmain.o
 	$(CROSS_COMPILE)-ld -T memmap startup.o notmain.o -o notmain.elf
 	$(CROSS_COMPILE)-objdump -D notmain.elf > notmain.list
 	$(CROSS_COMPILE)-objcopy notmain.elf -O binary notmain.mb
+	cp notmain.mb 000_mode0.mb
 
 clean :
 	rm -f *.o
