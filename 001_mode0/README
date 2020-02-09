@@ -1,0 +1,7 @@
+
+This is derived from 000_mode0 and the font directory.  Takes
+less space to compress the font data into a single bit per on/off
+table.
+
+The way this mode works with tiles makes it really easy to create a
+an ASCII table set of fonts.
