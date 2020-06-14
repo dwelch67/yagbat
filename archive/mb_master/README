@@ -5,5 +5,5 @@ This code is borrowed from Jeff Frohwein, Andrew May, Miguel Angel Ajo,
 and I assume others.
 
 This is a gba to gba multiboot program.  The master finds and loads
-its own program to the slave.
+its own program to the depedent.
 

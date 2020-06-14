@@ -180,7 +180,7 @@ not updated to keep up with newer versions of windows.
 These tutorials/examples will eventually, hopefully, get into a path
 to flash/cartridge based programs.  But the bulk of these examples will
 focus on running from ram.  The GBA system was designed such that a
-master with a cartridge can download a program into a slave GBA over a
+master with a cartridge can download a program into a dependent GBA over a
 link cable so that the two units (or three or four) can play head to
 head.  Which means, *some*, commmercial GBA games run from the larger
 of the two rams.  This also means there is some sort of protocol over a

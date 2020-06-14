@@ -102,7 +102,7 @@ The platform was designed to have the program run in flash then
 there are multiple memories some for general purpose some are
 tables for video tiles and sprites.  The larger but not necessarily
 fastest memory is where the multiboot games would land, your GBA
-would be a slave the master would download the RAM version into your
+would be a dependent the master would download the RAM version into your
 memory and it would run from there.
 
 Documentation

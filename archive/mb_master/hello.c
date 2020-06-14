@@ -59,7 +59,7 @@ int notmain ( void )
     {
         if(ra&0x0030)
         {
-            //I am a slave
+            //I am a dependent
             hexstring(0x12341234);
             while(1)
             {
