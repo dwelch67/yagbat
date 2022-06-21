@@ -1,0 +1,580 @@
+
+This series of examples starting with 900_header, are derived from
+000_mode0.  They talk more about the building of the rom than about
+making pixels on the display.
+
+The Nintendo chip inside the GBA contains an ARM processor that Nintendo
+bought from ARM.  The product name is the ARM7TDMI.  And it is baed on
+the ARM architecture armv4t, which describes the instruction set and
+a few other things.  Nintendo takes the processor bus and makes that
+connect to ram and rom and video and other.  
+
+Before the ARM7TDMI ARM was Acorn Risc Machines and they actually
+made chips, after they became Advanced Risc Machines and only sold
+ip to chip vendors so they could make chips.  The armv1 to armv3
+were 32 bit fixed length instructions.  Very clean and fast.  But
+certainly back in this day, it takes a lot of bytes to implement
+a program.  So with the armv4t.  They added thumb mode (yes...but
+they still have not named something hand).  Thumb mode is a completely
+different instruction set that is fixed length 16 bit.  Obviously
+each instruction is less powerful than its full sized ARM counterpart
+most instructions can only use registers r0-r7 instead of all 16 as
+an example.  But they are 16 bit.  It takes from a few percent to
+10 or 20 percent more instructions from the same C source code, but
+that can still be a smaller binary.
+
+Nintendo (GBA) is the first place and perhaps only that I have seen
+this but.
+
+0x00000000:  BIOS
+0x02000000:  EWRAM
+0x03000000:  IWRAM
+0x04000000:  Memory Mapped Registers
+0x05000000:  Palette RAM (PRAM)
+0x06000000:  Video RAM (VRAM)
+0x08000000:  GAME ROM
+
+EWRAM and the GAME ROM are on 16 bit buses.  Not 32 bit as one would
+expect.  IWRAM and OAM are on 32 bit buses.
+
+And Nintendo if you have not yet figured out, makes this design very
+cheap in that no caching, no extra features, most games are/were
+tile based to offload the processor into to some simple video logic
+making the whole system smaller and cheaper.  Clockging the processor
+at a very slow speed, etc.  So you want to fetch 32 bit instructions
+from EWRAM or the GAME ROM, it is going to take much longer than 
+fetching 16 bit, think twice as many clocks.  We may do a performance
+run at some point...
+
+And ARM happens to have this 32 bit processor with 16 bit instructions.
+
+And you find that building for thumb, even though it uses more total
+instructions, it peforms much better because of fetching. (Unless
+you want your whole program to live in the 32K IWRAM, and then ARM
+will beat thumb every so slightly because of the fewer instructions).
+
+Now with ARMs design (and mips and their 16 bit thing) you have to 
+switch between ARM mode and thumb mode.  And since the processor is
+quite happy bouncing between modes, the compilers deal with it.
+
+They call it thumb interwork, but you do not need/want to put that on
+the command line you just need to do a few simple things.
+
+Lets assume we have to be in arm mode on entry.  And entry in my
+case is an EWRAM multiboot binary.
+
+
+startup.s
+
+.cpu arm7tdmi
+.code 32
+
+.globl _start
+_start:
+    ldr sp,=0x03008000
+    bl notmain
+hang:
+    b hang
+
+It defaults to arm mode but the .code 32 forces it.  All these years
+of arm programming later, I dont bother with that line anymore, but
+will leave it for grins.  Likewise _start is not needed as shown
+in the prior example.
+
+In the days of the armv4t the only real way between modes was with
+the bx instruction (well blx too, but because of some bugs in one
+or more specific product, that instruction was avoided, perhaps it is
+the armv4t which is the one you avoid using it).  So bx it is.
+Which is like a branch but you use a register.  
+
+Because thumb instructions are 16 bit and aligned on 16 bit boundaries
+the addresses for thumb instrutions are alwaye even (lsbit is always
+a 1).  And for arm instructions, 32 bit, 32 bit aligned, the address
+where an arm instruction lives always has the lower two bits zeros.
+
+Now the documentation is misleading if not wrong.  But WHEN YOU DO
+THE BX if the lsbit in the register is a 1 then you are telling
+the processor that you want the instructions at that address to be
+interpreted as thumb.  If that lsbit is a zero, then you are telling
+the processor to interpret those instructions as arm.  The lsbit
+is NOT IN THE PC, program counter, it is removed by the BX instruction.
+
+Likewise if the thumb instruction is at 0x1000 basicaly we want to bx
+to 0x1001, that is not wrong or strange and you need to think of it
+as thumb branch address ORRED with 1 not added with a 1.
+
+So anyway.  Other than self modifying code things or sometimes a flavor
+of copy and jump, you should never need to actually assert that one.
+Using the gnu tools it will do it for you.
+
+Starting here
+
+.cpu arm7tdmi
+.code 32
+
+.globl _start
+_start:
+    ldr sp,=0x03008000
+    bl notmain
+hang:
+    b hang
+
+Lets go to thumb mode right away.
+
+
+.cpu arm7tdmi
+.code 32
+
+.globl _start
+_start:
+    ldr r0,=thumb_entry
+    bx r0
+
+.thumb
+
+.align
+
+.thumb_func
+thumb_entry:
+    ldr r0,=0x03008000
+    mov sp,r0
+    bl notmain
+hang:
+    b hang
+
+So the first couple of instructions are 32 bit arm
+
+Disassembly of section .text:
+
+02000000 <_start>:
+ 2000000:   e59f001c    ldr r0, [pc, #28]   ; 2000024 <GET32+0x6>
+ 2000004:   e12fff10    bx  r0
+
+02000008 <thumb_entry>:
+ 2000008:   4807        ldr r0, [pc, #28]   ; (2000028 <GET32+0xa>)
+ 200000a:   4685        mov sp, r0
+ 200000c:   f000 fcc0   bl  2000990 <__notmain_from_thumb>
+
+02000010 <hang>:
+ 2000010:   e7fe        b.n 2000010 <hang>
+
+02000012 <PUT16>:
+ 2000012:   8001        strh    r1, [r0, #0]
+ 2000014:   4770        bx  lr
+
+But then we switch to thumb mode and they are now 16 bit.  Yes, at
+least in the armv4t days that bl is actually two separate instructions
+that do not have to be back to back, so it is strictly 16 bit not
+sometimes 32 bit (that happened later with armv6-m and armv7).
+
+But we have a problem, that will cause you to crash and burn and
+you wont know why without learning all these details.
+
+
+
+02000000 <_start>:
+ 2000000:   e59f001c    ldr r0, [pc, #28]   ; 2000024 <GET32+0x6>
+ 2000004:   e12fff10    bx  r0
+...
+ 2000020:   4770        bx  lr
+ 2000022:   00090000    andeq   r0, r9, r0
+ 2000026:   80000200    andhi   r0, r0, r0, lsl #4
+ 200002a:       rsbsmi  r0, r0, r0, lsl #6
+
+so because of alignment that is hard to read. 
+
+this says
+
+ 2000000:   e59f001c    ldr r0, [pc, #28]   ; 2000024 <GET32+0x6>
+
+take the 32 bits from memory at address 0x02000024 and put that in
+r0.
+
+So I will do this:
+
+
+.cpu arm7tdmi
+.code 32
+
+.globl _start
+_start:
+    ldr r0,=thumb_entry
+    bx r0
+.ltorg
+
+
+.thumb
+
+.align
+
+.thumb_func
+thumb_entry:
+    ldr r0,=0x03008000
+    mov sp,r0
+    bl notmain
+hang:
+    b hang
+
+Giving
+
+
+02000000 <_start>:
+ 2000000:   e51f0000    ldr r0, [pc, #-0]   ; 2000008 <_start+0x8>
+ 2000004:   e12fff10    bx  r0
+ 2000008:   0200000d    andeq   r0, r0, #13
+
+0200000c <thumb_entry>:
+ 200000c:   4806        ldr r0, [pc, #24]   ; (2000028 <GET32+0x6>)
+ 200000e:   4685        mov sp, r0
+ 2000010:   f000 fcbe   bl  2000990 <__notmain_from_thumb>
+
+Much easier to read.  I basically did a pseudo code shortcut with the
+ldr r0,=thumb_entry and the tool created the value in memory nearby
+called a pool or literal pool, and then I said I want you to start a 
+pool here with .ltorg.  
+
+So now we see what I was talking about.  The thumb_entry address is
+0x0200000C in order to BX there we need it orred with one so 0x0200000D.
+
+Why do I say ORRED with one not ADDED with one?   Because sometimes
+folks will feel they have to add a one to things
+
+
+.globl _start
+_start:
+    ldr r0,=thumb_entry
+    add r0,r0,#1
+    bx r0
+.ltorg
+
+
+.thumb
+
+.align
+
+.thumb_func
+thumb_entry:
+    ldr r0,=0x03008000
+    mov sp,r0
+    bl notmain
+hang:
+    b hang
+
+
+02000000 <_start>:
+ 2000000:   e59f0004    ldr r0, [pc, #4]    ; 200000c <_start+0xc>
+ 2000004:   e2800001    add r0, r0, #1
+ 2000008:   e12fff10    bx  r0
+ 200000c:   02000011    andeq   r0, r0, #17
+
+02000010 <thumb_entry>:
+ 2000010:   4806        ldr r0, [pc, #24]   ; (200002c <GET32+0x6>)
+ 2000012:   4685        mov sp, r0
+ 2000014:   f000 fcc0   bl  2000998 <__notmain_from_thumb>
+
+Now you are completely screwed because you tought you needed to ADD.
+
+The tool properly did the orring for you, but then you added another
+one so you are going to bx to 0x02000012 which tells it to look for
+arm instructions, but first that is not an aligned address and second
+its not arm instructions, so you are totally hosed.
+
+If you felt the strong urge to to still muck with that bit if you had
+orred and not added.
+
+
+.globl _start
+_start:
+    ldr r0,=thumb_entry
+    orr r0,r0,#1
+    bx r0
+.ltorg
+
+
+.thumb
+
+.align
+
+.thumb_func
+thumb_entry:
+    ldr r0,=0x03008000
+    mov sp,r0
+    bl notmain
+hang:
+    b hang
+
+You would still look a little foolish but you would not fail in this
+case.
+
+As much as I like to not do ghee whiz tool stuff, this is a place
+where you want to do that.
+
+Now I have walked us into a very painful trap.
+
+.cpu arm7tdmi
+.code 32
+
+.globl _start
+_start:
+    ldr r0,=thumb_entry
+    bx r0
+.ltorg
+
+.thumb
+
+.align
+
+.thumb_func
+thumb_entry:
+    ldr r0,=0x03008000
+    mov sp,r0
+    bl notmain
+hang:
+    b hang
+
+.align
+
+.globl PUT16
+PUT16:
+    strh r1,[r0]
+    bx lr
+
+
+
+void notmain ( void )
+{
+    unsigned int ra;
+    unsigned int rb;
+    unsigned int rc;
+
+    //display control,
+    //mode 0
+    //enable BG0
+    PUT16(DISPCNT,0x0100);
+    //BG0 control
+
+
+
+02000000 <_start>:
+ 2000000:   e51f0000    ldr r0, [pc, #-0]   ; 2000008 <_start+0x8>
+ 2000004:   e12fff10    bx  r0
+ 2000008:   0200000d    andeq   r0, r0, #13
+
+0200000c <thumb_entry>:
+ 200000c:   4806        ldr r0, [pc, #24]   ; (2000028 <GET32+0x4>)
+ 200000e:   4685        mov sp, r0
+ 2000010:   f000 fcbe   bl  2000990 <__notmain_from_thumb>
+
+02000014 <hang>:
+ 2000014:   e7fe        b.n 2000014 <hang>
+ 2000016:   46c0        nop         ; (mov r8, r8)
+
+02000018 <PUT16>:
+ 2000018:   8001        strh    r1, [r0, #0]
+ 200001a:   4770        bx  lr
+
+...
+
+0200002c <notmain>:
+ 200002c:   e92d4070    push    {r4, r5, r6, lr}
+ 2000030:   e3a01c01    mov r1, #256    ; 0x100
+ 2000034:   e3a00301    mov r0, #67108864   ; 0x4000000
+ 2000038:   ebfffff6    bl  2000018 <PUT16>
+ 200003c:   e3a01d42    mov r1, #4224   ; 0x1080
+
+...
+
+notmain is 32 bit arm instructions.  But PUT16 is thumb. 
+It is using bl to call the thumb instruction.  You cannot switch modes
+with BL must use BX.  
+
+Notice what I did here:
+
+.thumb_func
+thumb_entry:
+
+This is a shortcut (only for thumb gnu assembly not arm) that says
+the next label is consdered a function call address and as a result
+orr the address with one when I ask for it.
+
+If you remove the .thumb_func then 
+
+
+02000000 <_start>:
+ 2000000:   e51f0000    ldr r0, [pc, #-0]   ; 2000008 <_start+0x8>
+ 2000004:   e12fff10    bx  r0
+ 2000008:   0200000d    andeq   r0, r0, #13
+
+0200000c <thumb_entry>:
+
+
+0200000d becomse 0200000c and you will think you have to add/or with
+one to make it all work.  You dont.
+
+I intentionally left it off to demonstrate this point.
+
+So
+
+
+.cpu arm7tdmi
+.code 32
+
+.globl _start
+_start:
+    ldr r0,=thumb_entry
+    bx r0
+.ltorg
+
+.thumb
+
+.align
+
+.thumb_func
+thumb_entry:
+    ldr r0,=0x03008000
+    mov sp,r0
+    bl notmain
+hang:
+    b hang
+
+.align
+
+.globl PUT16
+.thumb_func
+PUT16:
+    strh r1,[r0]
+    bx lr
+
+the .globl can be anywhere, the .thumb_func can be before the .globl but
+the next address is what is marked.  So you have to use this directive
+carefully.  
+
+0200002c <notmain>:
+ 200002c:   e92d4070    push    {r4, r5, r6, lr}
+ 2000030:   e3a01c01    mov r1, #256    ; 0x100
+ 2000034:   e3a00301    mov r0, #67108864   ; 0x4000000
+ 2000038:   eb000256    bl  2000998 <__PUT16_from_arm>
+ 200003c:   e3a01d42    mov r1, #4224   ; 0x1080
+
+The linker now saves us by making a trampoline for us to switch modes
+since the assembler had encoded a bl and that cant be changed at this
+point.
+
+02000998 <__PUT16_from_arm>:
+ 2000998:   e59fc000    ldr r12, [pc]   ; 20009a0 <__PUT16_from_arm+0x8>
+ 200099c:   e12fff1c    bx  r12
+ 20009a0:   02000019    andeq   r0, r0, #25
+
+...
+
+02000018 <PUT16>:
+ 2000018:   8001        strh    r1, [r0, #0]
+ 200001a:   4770        bx  lr
+
+so it patches it all up and uses a bx to switch for us.
+
+Now we really want the C code to be thumb anyway, so the other way
+to fix is is to not have arm code.
+
+adding -mthumb
+
+arm-none-eabi-gcc -c -mcpu=arm7tdmi -mthumb -Wall -Werror -O2 -nostdlib -nostartfiles -ffreestanding  notmain.c -o notmain.o
+
+
+0200002c <notmain>:
+ 200002c:   2180        movs    r1, #128    ; 0x80
+ 200002e:   2080        movs    r0, #128    ; 0x80
+ 2000030:   b5f8        push    {r3, r4, r5, r6, r7, lr}
+ 2000032:   0049        lsls    r1, r1, #1
+ 2000034:   04c0        lsls    r0, r0, #19
+ 2000036:   f7ff ffef   bl  2000018 <PUT16>
+
+problem solved. and actually the thumb_func is not needed 
+
+.globl PUT32
+PUT32:
+    str r1,[r0]
+    bx lr
+
+ 2000108:   f7ff ff8a   bl  2000020 <PUT32>
+
+Before I finish beating on this...
+
+If I add -save-temps to gcc or -S to get/save the asm file generated
+
+
+    .thumb_func
+    .fpu softvfp
+    .type   notmain, %function
+notmain:
+    @ Function supports interworking.
+    @ args = 0, pretend = 0, frame = 0
+    @ frame_needed = 0, uses_anonymous_args = 0
+
+it is using .thumb_func and .type notmain,%function
+
+If I build as arm not thumb
+
+    .type   notmain, %function
+notmain:
+
+it has the .type and not a .thumb_func, there is no .arm_func...
+
+so lets try that ourself.
+
+.cpu arm7tdmi
+.code 32
+
+.globl _start
+_start:
+    ldr r0,=thumb_entry
+    bx r0
+.ltorg
+
+.thumb
+
+.align
+
+.type thumb_entry, %function
+thumb_entry:
+    ldr r0,=0x03008000
+    mov sp,r0
+    bl notmain
+hang:
+    b hang
+
+
+02000000 <_start>:
+ 2000000:   e51f0000    ldr r0, [pc, #-0]   ; 2000008 <_start+0x8>
+ 2000004:   e12fff10    bx  r0
+ 2000008:   0200000d    andeq   r0, r0, #13
+
+0200000c <thumb_entry>:
+ 200000c:   4806        ldr r0, [pc, #24]   ; (2000028 <GET32+0x4>)
+ 200000e:   4685        mov sp, r0
+ 2000010:   f000 f80c   bl  200002c <notmain>
+
+we still get the 0200000d
+
+Since most of the time I let the compiler do the right thing and my
+assembly language if I use thumb mode I will often just switch
+modes to thumb right away and the rest of the asm is thumb, I use
+.thumb_func, easy to cut and paste, dont have to match the function
+name.  Lazy programmer.  But if you use the .type   ,  %function then
+arm or thumb code functions will be marked right and you dont have
+to be position specific with the .type like .thumb_func.
+
+
+so we bx from arm mode to thumb mode.
+
+build the C code with -mthumb.  
+
+add .thumb_func to the thumb mode function labels.  
+
+and it will build a mostly thumb program.
+
+on my machine the notmain.nb binary went from 2452 bytes to 1884.
+
+And if we could measure performance (the emulators are NOT going to
+do this, dont expect their timers to be right) this code would run
+quite a bit faster.

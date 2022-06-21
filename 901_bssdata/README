@@ -1,0 +1,489 @@
+
+This is a series of examples that are more about the building of the
+rom/binary than how to make pixels on the display.
+
+I am focusing these examples on ram based binaries that are copied
+to ram and then jumped into.  So the rom code simply copies and
+jumps.
+
+Now while most programmers are formally taught that globals are bad
+(very bad thing to teach, esp for embedded platforms like these
+with very limited resources).  They are still supported by the C 
+language.  
+
+What I have been calling the bootstrap is a C bootstrap.  Once you
+start to understand how the tools really work, you will realize that
+you need some ideally non-C code to start the C code.
+
+You want to build a car you need parts to get to the factory, now
+using other automobiles, but before that maybe trains or wagons.  
+For wagons you needed to hand carry lumber to build the first wagons
+so that you could use wagons to haul lumber and materials to build more
+wagons.
+
+As C programmers per the language we expect things like
+
+
+    unsigned int x = 5;
+    unsigned int y;
+    unsigned int fun ( unsigned int, unsigned int );
+    int main ( void )
+    {
+        y=fun(y,x);
+    }
+
+To actually work.  And this actually takes a lot more work than you
+think.  On top of all the compiler work to parse the language, etc
+and to figure out that the binary needs some read/write memory locations
+for x and y, there also need to be some stack for intermediate values
+and saving return addresses for nested function calls.  
+
+And you run into a chicken and egg problem if you try to bootstrap C 
+with C.  (although some folks do, looks ugly, more complicated, but 
+there you go).
+
+You need to set the stack pointer.  Uninitialized global variables like
+y above, are expected to be zero when main() is called, as well as
+x to be a 5.  And you need to have a stack pointer initialized before
+main() is called otherwise no nested function calls nor local variables.
+
+So the absolute minimum list one would expect to have to implement
+(granted some compilers and certainly some C libraries which is a 
+separate topic, have offloaded some work into the linker script) is
+that you need to set the stack pointer to somewhere in ram that 
+conforms with the rules of the processor (grows up vs grows down
+basically, ARM grows down by default)  As well as with your overall
+memory allocation design (this is bare metal, ultimately you decide
+where things live in memory).  You need to zero .bss and make sure
+.data is in read/write memory (this is baremetal that technically
+boots from rom/flash which is read-only).  And then you call the C
+entry point (call not jump).
+
+.bss is things that are intialized with zero, .data is things that
+are initialized with non-zero.  .text for some reason that goes back
+decades probably to one person, is your instructions (can be read
+only or read/write memory.  And you may also see .rodata and some
+others (read only data, when you use const for some global data for
+example).  
+
+If I compile to object then disassemble that code above I get
+
+Disassembly of section .data:
+
+00000000 <x>:
+   0:   00000005    andeq   r0, r0, r5
+
+Disassembly of section .bss:
+
+00000000 <y>:
+   0:   00000000    andeq   r0, r0, r0
+
+Disassembly of section .text.startup:
+
+00000000 <main>:
+   0:   e92d4010    push    {r4, lr}
+   4:   e59f3020    ldr r3, [pc, #32]   ; 2c <main+0x2c>
+   8:   e59f4020    ldr r4, [pc, #32]   ; 30 <main+0x30>
+   c:   e5931000    ldr r1, [r3]
+  10:   e5940000    ldr r0, [r4]
+  14:   ebfffffe    bl  0 <fun>
+  18:   e1a03000    mov r3, r0
+  1c:   e3a00000    mov r0, #0
+  20:   e5843000    str r3, [r4]
+  24:   e8bd4010    pop {r4, lr}
+  28:   e12fff1e    bx  lr
+    ...
+
+As I mentioned .data holds x, .bss holds y and .text holds the instructions.
+
+When you use a toolchain, a chain of tools.  compiler - assembler - linker
+
+You will naturally architect your tools such that you can build multiple
+"objects" which are partial binaries and data.  And then "link" them
+together.  And that is what you see when my Makefile calls arm...ld
+
+
+arm-none-eabi-objdump -D notmain.o
+
+notmain.o:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+00000000 <notmain>:
+   0:   e92d4070    push    {r4, r5, r6, lr}
+   4:   e3a01c01    mov r1, #256    ; 0x100
+   8:   e3a00301    mov r0, #67108864   ; 0x4000000
+   c:   ebfffffe    bl  0 <PUT16>
+  10:   e3a01d42    mov r1, #4224   ; 0x1080
+
+I didnt use any global variables so no .data nor .bss appears, but
+the disassembly starts at 0x00000000 because this is unlinked.
+
+References to external calls like the PUT16 are not complete the
+linker needs to fix that instruction so that it properly calls that
+function.
+
+So after linking
+
+
+
+Disassembly of section .text:
+
+02000000 <_start>:
+ 2000000:   e59fd024    ldr sp, [pc, #36]   ; 200002c <GET32+0x8>
+ 2000004:   eb000009    bl  2000030 <notmain>
+
+02000008 <hang>:
+ 2000008:   eafffffe    b   2000008 <hang>
+
+0200000c <PUT16>:
+
+...
+
+
+
+02000024 <GET32>:
+ 2000024:   e5900000    ldr r0, [r0]
+ 2000028:   e12fff1e    bx  lr
+ 200002c:   03008000    movweq  r8, #0
+
+02000030 <notmain>:
+ 2000030:   e92d4070    push    {r4, r5, r6, lr}
+ 2000034:   e3a01c01    mov r1, #256    ; 0x100
+ 2000038:   e3a00301    mov r0, #67108864   ; 0x4000000
+ 200003c:   ebfffff2    bl  200000c <PUT16>
+ 2000040:   e3a01d42    mov r1, #4224   ; 0x1080
+ 2000044:   e59f06bc    ldr r0, [pc, #1724] ; 2000708 <notmain+0x6d8>
+ 2000048:   ebffffef    bl  200000c <PUT16>
+
+Now the program is built around the proper address (for EWRAM 0x02000000).
+
+And you can see that call to PUT16 now has the correct address.
+
+And you can see my C bootstrap:
+
+02000000 <_start>:
+ 2000000:   e59fd024    ldr sp, [pc, #36]   ; 200002c <GET32+0x8>
+ 2000004:   eb000009    bl  2000030 <notmain>
+
+I have the stack pointer init, and I have the call to my C entry point
+but no .bss nor .data stuff.
+
+As clearly stated in the first example.  I dont support them.  But
+also stated you can add .data to the linker script.
+
+Linker scripts are not always how a toolchains linker works, but
+it makes life so much easier if you design your tools to use one.
+
+Now gnu ld implies you dont need one with command line options like
+
+-Ttext=0x08000000 and -Tdata, etc.
+
+But you find something interesting if you do that
+
+Lets take this very simple assembly language program
+
+hello: b hello
+
+assemble it and disassemble
+
+
+arm-none-eabi-as test.s -o test.o
+arm-none-eabi-objdump -d test.o
+
+00000000 <hello>:
+   0:   eafffffe    b   0 <hello>
+
+Now lets link that
+
+arm-none-eabi-ld -Ttext=0x08000000 test.o -o test.elf
+
+arm-none-eabi-ld -Ttext=0x08000000 test.o -o test.elf
+arm-none-eabi-ld: warning: cannot find entry symbol _start; defaulting to 0000000008000000
+
+Why is it complaining about _start?
+
+What if I use this linker script instead?
+
+MEMORY
+{
+    rom  : ORIGIN = 0x08000000, LENGTH = 32K
+   iwram : ORIGIN = 0x03000000, LENGTH = 32K
+   ewram : ORIGIN = 0x02000000, LENGTH = 256K
+}
+SECTIONS
+{
+   .text : { *(.text*) } > rom
+   .bss  : { *(.bss*) } > iwram
+}
+
+arm-none-eabi-ld -T rommap test.o -o test.elf
+
+Now it does not complain?  What is going on?  Well in this gnu
+world there is a default linker script that is based on your system
+(Linux, Windows, etc) and the C library that is tied to it and
+you are just mucking with an address in that default, and the rest
+of the default linker script is as was...
+
+And that linker script will start with 
+
+ENTRY(_start)
+
+Which we may play with later, but this basically tells the tool we
+are wanting to build the binary with an entry point.  
+
+Note that "binaries" come in many many forms. Most of the binaries we
+tend to use .exe, elf, coff, aout, etc are more than just the data
+and instructions they contain label names and all kinds of other
+useful information.  The particular operating system (windows, linux,
+etc) supports specific executable types with rules, that the toolchain
+must conform to.  But the operating system has a program that loads
+the program and runs it.  And likes to have all that stuff.  But
+when we use the toolchain to build a bare metal rom, ultimately
+we want only the bytes for that rom, but with toolchains like gnu
+we go through one of these container type binaries like elf, and
+then gnu has a tool to turn that into an image by extracting only 
+the instructions and data.  A loader for an operating system will
+definitely care about the entry point. But for a system like the
+GBA or a microcontroller, etc.  The chip/logic/system dicates
+the rules and generally the first so many bytes of the image are
+either the first instructions or an address to where the first
+instruction is.
+
+Just use a linker script.  I have made this as painless as possible.
+
+Up to this point
+
+MEMORY
+{
+    rom  : ORIGIN = 0x08000000, LENGTH = 32K
+   iwram : ORIGIN = 0x03000000, LENGTH = 32K
+   ewram : ORIGIN = 0x02000000, LENGTH = 256K
+}
+SECTIONS
+{
+   .text : { *(.text*) } > ewram
+}
+
+(yes technically I could make this even simpler, but)
+
+You define your memory spaces, I recommend you avoid the (rwx) stuff,
+you may thank me later.
+
+And then you define your sections.  The SECTIONS is where you really
+define how you want the binary built.  Order matters, etc...And
+also note that unless called out in the linker script. Command line
+order matters.
+
+    $(CROSS_COMPILE)-ld -T memmap startup.o notmain.o -o notmain.elf
+
+I have startup.o first, that is where my bootstrap is.  And it shows
+up first in the binary.  But if I swap those, then startup will
+not be up front and the binary will crash if you attempt to run it.
+
+Some folks overcomplicate things IMO and create new section names
+so that the linker script can call them out and they can be extra
+lazy and not just put the files on the command line in a certain order
+or realistically only one has to be first then do whatever with the
+rest.
+
+I am going to hack up the example here into something that WILL NOT
+RUN on the gba.  Or not do anything interesting or useful.
+
+startup.s
+
+.cpu arm7tdmi
+.code 32
+
+.globl _start
+_start:
+    ldr sp,=0x03008000
+    bl notmain
+hang:
+    b hang
+
+.globl bounce
+bounce:
+    bx lr
+
+.data
+.byte 7
+
+notmain.c
+
+unsigned int a;
+void bounce ( unsigned int );
+void notmain ( void )
+{
+    bounce(a);
+}
+
+
+memmap:
+
+MEMORY
+{
+    rom  : ORIGIN = 0x08000000, LENGTH = 32K
+   iwram : ORIGIN = 0x03000000, LENGTH = 32K
+   ewram : ORIGIN = 0x02000000, LENGTH = 256K
+}
+SECTIONS
+{
+   .text : { *(.text*) } > ewram
+   .rodata : { *(.rodata*) } > ewram
+   .bss : { *(.bss*) } > ewram
+   .data : { *(.data*) } > ewram
+}
+
+So back to this, there is no magic to the memory name rom nor ram nor
+anything else. No doubt there are some reserved names, but otherwise
+it is just a unique name you get for that address space so that you
+can use that name in the SECTIONS.
+
+We could do 
+
+   bob   : ORIGIN = 0x08000000, LENGTH = 32K
+   ted   : ORIGIN = 0x03000000, LENGTH = 32K
+   alice : ORIGIN = 0x02000000, LENGTH = 256K
+
+And it would work perfectly fine.
+
+You will see this syntax very often.
+
+   .text : { *(.text*) } > ewram
+
+Starting in the middle.
+
+Now above we saw this at one point
+
+Disassembly of section .text.startup:
+
+so (.text*) will take .text.startup, .text, etc and all get
+sucked in here.
+
+The asterisk up front *() means all object files, this is where
+you would call out a specific file, but ld is not as easy as you think
+it can not do what you think you are asking it to do.  In general
+ld linker scripts are quite painful to craft for this reason, and
+as well as lack of portability to other toolchains, I prefer to do
+the work in the code or command line and not load up the gnu specific
+linker script that is very painful to get working right.
+
+The .text : up front is the name of the section when it goes into the
+liked binary and the point of this tangent is that you can do this:
+
+   .apple : { *(.text*) } > ewram
+   .orange : { *(.rodata*) } > ewram
+   .pickle : { *(.bss*) } > ewram
+   .grape : { *(.data*) } > ewram
+
+And for what we are doing here, just trying to make a rom file, that
+will work great.  Try that for a program that you want to run on
+an operating system, yeah, it will break it.
+
+So
+
+set the stack pointer
+zero bss
+put .data in place
+branch to entry point
+
+And here is my trick.  Since I am building for ram and not rom (EWRAM).
+And I happen to know that if .bss is buried in the middle of something
+and you do an objcopy -O binary, it will zero pad it.  So
+
+We need .text up front for the bootstrap entry point, first instructions.
+
+   .text : { *(.text*) } > ewram
+   .rodata : { *(.rodata*) } > ewram
+   .bss : { *(.bss*) } > ewram
+   .data : { *(.data*) } > ewram
+
+If I put .bss somewhere in the middle, and put something on the end
+that I can guarantee is there.   The toolchain takes care of all of it
+
+This is my bootstrap
+
+    ldr sp,=0x03008000
+    bl notmain
+
+it ticks two of the four boxes, but look at the final binary
+
+Forcing a .data into the project even if there is no .bss or no
+globals in the code.
+
+.data
+.byte 7
+
+
+
+Disassembly of section .text:
+
+02000000 <_start>:
+ 2000000:   e59fd008    ldr sp, [pc, #8]    ; 2000010 <bounce+0x4>
+ 2000004:   eb000002    bl  2000014 <notmain>
+
+...
+
+Disassembly of section .bss:
+
+02000030 <a>:
+ 2000030:   00000000    andeq   r0, r0, r0
+
+Disassembly of section .data:
+
+02000034 <.data>:
+ 2000034:   Address 0x0000000002000034 is out of bounds.
+
+From this view it is as desired .text, then .bss then .data.
+
+And the real winner:
+
+00000000  08 d0 9f e5 02 00 00 eb  fe ff ff ea 1e ff 2f e1  |............../.|
+00000010  00 80 00 03 10 40 2d e9  0c 30 9f e5 00 00 93 e5  |.....@-..0......|
+00000020  f9 ff ff eb 10 40 bd e8  1e ff 2f e1 30 00 00 02  |.....@..../.0...|
+00000030  00 00 00 00 07                                    |.....|
+00000035
+
+offset 0x30 is our globa a variable and at 0x34 is the byte with the
+value 7.
+
+00000030  [00 00 00 00]   [07]                                    |.....|
+
+I have now initialized .bss to zero and .data is in place in memory
+ready to use.  All four boxes ticked.
+
+Now if you were to do this for the GAME ROM space.  WHOLE other set
+of problems and I will not even try to show that pain.
+
+Being baremetal you techincally need to give up C libraries in general
+you can try to get a memcpy and such, but since such a high percentage
+of the C library requires system calls (as in operating system calls
+as in hey operating system print something for me or read a file, etc)
+and this is bare metal, then you either need to fake or really use
+an operating system.  Or basically give some or all of the C library
+up (not scary it is very liberating, it unloads a burden).  And while
+at it, even though it burns space:
+
+unsigned int a;
+unsigned int b = 5;
+void notmain ( void )
+{
+}
+
+Just do this
+
+unsigned int a;
+unsigned int b;
+void notmain ( void )
+{
+    a = 0;
+    b = 5;
+}
+
+And save the pain, maintenace, etc.
+
+
+YMMV
+

@@ -1,0 +1,238 @@
+
+This series of examples starting with 900_header, are derived from
+000_mode0.  They talk more about the building of the rom than about
+making pixels on the display.
+
+So the first examples starting with 000_mode0 had this bootstrap code
+
+.cpu arm7tdmi
+.code 32
+
+.globl _start
+_start:
+    ldr sp,=0x03008000
+    bl notmain
+hang:
+    b hang
+
+.globl PUT32
+PUT32:
+    str r1,[r0]
+    bx lr
+
+.globl HOP
+HOP:
+    bx r0
+
+.globl faster_copy
+faster_copy:
+    push {r4,r5,r6,r7}
+    ldmia r0!,{r4,r5,r6,r7}
+    stmia r1!,{r4,r5,r6,r7}
+    subs r2,#4
+    bne faster_copy
+    pop {r4,r5,r6,r7}
+    bx lr
+
+And to some extent it works just fine.  That extent is that 
+visual boy advance, vba, is perfectly fine with it, as well as if you
+have a gba cartridge that has a menu system.  The menu system itself
+has to make the hardware happy, but then when that cartridge software
+loads our software, it no longer needs a proper header.
+
+Now I do not have vba-m because I run linux.  I did recently try mgba
+and it wants the proper header.  I dont know if mgba will run a 
+.mb (multiboot) file.  So I went thorugh the exercise again to put
+a proper header on so that mgba would work, and am going to try it on
+a cartridge that doesnt have a menu if I can find one.
+
+Anyway, there are many resources out there you can find like this one
+
+http://problemkaputt.de/gbatek-gba-cartridge-header.htm
+
+That describe the header. (best to look at a number of them since
+they all have different info as well as the AGB programming manual if
+you can find one).
+
+NOTE: your google searches may find the gameboy (not advance) header
+stuff even though you searched for gameboy advance, while the same
+concept, find actual gameboy advance (GBA) header info.
+
+For an actual GBA to accept your cartridge.
+
+address
+
+0x08000000 jump to 0x080000C0
+0x08000004 to 0x0800009F Nintendo Logo Character Data
+0x080000A0 to 0x080000BF Game title and other developer info
+0x080000C0 jump to 0x080000E0
+0x080000C4 to 0x080000DF just put zeros
+0x080000E0 start your program
+
+The logo data is the same for everyone.
+
+Now one might happen to look at real roms and one might happen to
+notice that some, real roms, start code at 0x080000C0 so that is
+apparently fine.  
+
+So I am going to change the example to something different
+
+flash.s:
+
+
+.cpu arm7tdmi
+.code 32
+
+/* address 0x08000000*/
+rom_start:
+    b ram_start
+    .space 0xA0-0x04,0
+
+/* address 0x080000A0*/
+    .space 0xC0-0xA0,0
+
+/* address 0x080000C0*/
+ram_start:
+    b _start
+    .space 0xE0-0xC4,0
+
+/*address 080000E0*/
+.globl _start
+_start:
+    ldr sp,=0x03008000
+    bl notmain
+hang:
+    b hang
+
+.globl PUT32
+PUT32:
+    str r1,[r0]
+    bx lr
+
+.globl HOP
+HOP:
+    bx r0
+
+.globl faster_copy
+faster_copy:
+    push {r4,r5,r6,r7}
+    ldmia r0!,{r4,r5,r6,r7}
+    stmia r1!,{r4,r5,r6,r7}
+    subs r2,#4
+    bne faster_copy
+    pop {r4,r5,r6,r7}
+    bx lr
+
+Now remember, startup.s is the bootstrap code for the RAM based program
+itself.  The real program.  flash.s is part of the copy and jump
+wrapper.  startup.s is the .mb file and flash.s the .gba file.  This
+logo data needs to be at the .gba level.  (most of the time you
+will just develop at the .gba/rom level and not do what I have done
+here).
+
+So once built
+
+copyjump.elf:     file format elf32-littlearm
+
+
+Disassembly of section .text:
+
+08000000 <rom_start>:
+ 8000000:   ea00002e    b   80000c0 <ram_start>
+    ...
+
+080000c0 <ram_start>:
+ 80000c0:   ea000006    b   80000e0 <_start>
+    ...
+
+080000e0 <_start>:
+ 80000e0:   e59fd02c    ldr sp, [pc, #44]   ; 8000114 <faster_copy+0x1c>
+ 80000e4:   eb00000b    bl  8000118 <notmain>
+
+Confirm:
+
+0x08000000 needs to branch to 0x080000C0
+0x080000C0 needs to branch to 0x080000E0
+
+Then if you want to use a tool like gba-fix or others then the padding
+is right and they wont mess up this binary.
+
+Or you can...find a real rom, and extract the first 0xC0 bytes and
+stick it in front of _start.
+
+Or since gba-fix is open source on github.
+
+You can turn this portion
+
+    // logo
+    { 0x24,0xFF,0xAE
+    ...
+    0xD4,0xF8,0x07 } ,
+
+Into
+
+/* address 0x08000000*/
+rom_start:
+    b ram_start
+    /*.space 0xA0-0x04,0*/
+    /*gba-fix*/
+    .byte 0x24,0xFF,0xAE ... 0xD4,0xF8,0x07
+
+Remembering to comment out that space directive.  And then from 
+various documents you can see what I did here:
+
+/* address 0x080000A0*/
+    /*.space 0xC0-0xA0,0*/
+    @.byte 0x48,0x45,0x4C,0x4C,0x4F,0x57,0x4F,0x52,0x4C,0x44,0x00,0x00,0x42,0x5A,0x5A,0x45,0x30,0x30,0x96,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xBA,0x00,0x00
+    @.byte 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x42,0x5A,0x5A,0x45,0x30,0x30,0x96,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xB6,0x00,0x00
+    .byte 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x30,0x30,0x96,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xF1,0x00,0x00
+
+Commenting out the .space and only uncommenting one of these lines.
+
+And then check copyjump.list to confirm that 0x08000000 branches to
+0x080000C0.  And either you start the bootstrap there or then branch
+to 0x080000E0 and start the bootstrap there.
+
+And now the gba file will work with mgba and perhaps other emulators.
+
+While rambling about real hardware.  
+
+0x00000000:  BIOS
+0x02000000:  EWRAM
+0x03000000:  IWRAM
+0x04000000:  Memory Mapped Registers
+0x05000000:  Palette RAM (PRAM)
+0x06000000:  Video RAM (VRAM)
+0x08000000:  GAME ROM
+
+EWRAM is on a 16 bit bus
+IWRAM is on a 32 bit bus
+GAME ROM is on a 16 bit bus
+
+Now normally with ARM vs thumb at least up until the thumb2 extensions
+in armv7-m and -a.  It took some percent more instructions to do the
+same thing in thumb that it did in ARM.  And depending on the platform
+you could see the performance loss.  But the binary size, would not
+be strictly half but it would/could be noticably smaller, so a few
+to double digit percent slower, but much smaller.
+
+What happens on this platform though, is quite simple.  Fetching a
+32 bit instruction across a 16 bit bus, and remember that Nintendo
+is all about inexpensive not performance (thus the tile base games
+and sliders, offload some of the work to simple logic on the video
+side).  So it takes more clock cycles to fetch N number of 32 bit
+instructions as even N plus a percent 16 bit instructions, so for
+the same C code in EWRAM and GAME ROM, the expectation is that
+if you build for thumb it is going to run faster, allowing you to
+do more things.   
+
+These examples for now are ARM instructions only.  I can certainly
+but have not added the little bit of code to demonstrate switching to
+and mixing in thumb.  Im sure I will do that at some point in these
+examples.  
+
+I can still download vba for linux and can still run the gba files and
+the mb files on it.  So most of these examples will be EWRAM based
+programs with a rom based copy and jump to copy the EWRAM image on
+flash to EWRAM and then jump to the start of EWRAM.
+

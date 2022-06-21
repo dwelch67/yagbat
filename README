@@ -24,7 +24,8 @@ vga myprogram.gba
 For hardware I recommend getting a Nintendo DS Lite on ebay.
 
 As of this writing they are around $25 for a used one, you will want
-a charger too (ideally get one that comes with a charger).
+a charger too (ideally get one that comes with a charger). (now
+$10 or $20 more)
 
 The GBA SP is not a bad choice, currently more expensive, it has an
 advantage we may talk about (the port on the top can be used for a
@@ -32,7 +33,10 @@ serial port and maybe I can figure out a multiboot cable to not need
 a flash cart) it is backlit.
 
 The original which works just fine too is not backlit although there
-are some kits and some may come with a kit applied.
+are some kits and some may come with a kit applied.  There are now
+body kits as well as replacement display upgrades.  Hmm, actually
+looks like there are a bunch of original GBAs with new body, buttons,
+and IPS backlit display, yes...$200...but the work is done.
 
 And there is the micro which is backlit, at the tail end of these
 being on retail you could pick them up pretty cheap I have a few
@@ -57,7 +61,8 @@ cartridges.  We are using it for homebrew development not illegally
 playing games.  Nintendo most likely has an opinion about platform
 development as it is/was near impossible to legally produce a product
 (cartridge) for the platform.  A relatively short list of companies
-are allowed into the club.
+are allowed into the club. (as of this update, can still buy some on
+amazon).
 
 Careful where you buy these that you dont get ripped off.  As of this
 writing the GBA flash carts are easier to come by than the NDS flash
@@ -191,8 +196,12 @@ or maybe
 
 sudo apt-get -y install gcc-7-arm-linux-gnueabi
 
+Or now you can:
+
+gcc-arm-none-eabi binutils-arm-none-eabi
+
 My examples should work on gcc/binutils cross tools from around
-gcc 3.x.x or 4.x.x to the present (9.x.x as of this writing) and
+gcc 3.x.x or 4.x.x to the present (11.x.x as of this writing) and
 whatever the binutils were at those times.  I think I am currently
 mixing gcc 5.x.x with the current as of this writing binutils and
 that appears to work.  The code produced by the various major versions
@@ -218,8 +227,10 @@ ARM maintains one, I prefer this link to that one as it has not changed
 https://launchpad.net/gcc-arm-embedded
 
 but it is dated they have a new link (which does keep changing), or you
-can google your way through to an arm gnu cross compiler.  If you
-have a raspberry pi you can natively build there (have to change the
-makefiles).
+can google your way through to an arm gnu cross compiler.
+
+another place
+
+https://www.embecosm.com/resources/tool-chain-downloads/
 
 start with the 000_mode0 example

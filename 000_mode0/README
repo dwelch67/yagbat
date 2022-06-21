@@ -166,7 +166,9 @@ windows program and a special programmer to program the flash on the
 chip or in the case of sd card based ones a windows program to do some
 magic to the .gba file to make it work.  And these windows programs are
 not supported and sometimes flakey if you can still find them, and are
-not updated to keep up with newer versions of windows.
+not updated to keep up with newer versions of windows. (not so true
+anymore, most have an sd card now and you pust put the file on the
+sd card and follow a menu to run it).
 
 These tutorials/examples will eventually, hopefully, get into a path
 to flash/cartridge based programs.  But the bulk of these examples will
@@ -240,3 +242,9 @@ or the full image
 vba notmain.gba
 
 The file notmain.gba is what you use with the flash cartridge.
+
+You may wish to jump ahead to 900_header and follow those few examples
+which have to do with making the gba file work on certain older
+cartridges and .data and .bss and thumb topics.  Basically about
+the build of the rom and not so much the how to make pixels/tiles on
+the display.  Then come back to 001_mode0.
